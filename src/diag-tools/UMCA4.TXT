@@ -1,0 +1,126 @@
+UMCA4 - UM8886A register A4h controlled experiment
+===================================================
+
+Purpose
+-------
+Test the small set of A4h bits 1:0 encodings that are useful for the current
+PCI timing investigation on this exact M915i / UMC chipset machine.
+
+Reverse-engineered notes tentatively describe the field as:
+
+  A4h bits 1:0: CPU-to-PCI (2:1 / 1:1 / 3:2 / reserved ?)
+
+The mapping is NOT official documentation and remains tentative.  On this
+machine the known BIOS baseline is A4h=01h.  The experimentally confirmed
+stable state is A4h=00h.  This version also exposes A4h=02h (bits 1:0=10b)
+as a controlled intermediate test.  Encoding 11b is deliberately NOT exposed.
+
+Hardware safety guards
+----------------------
+Expected exact devices/state:
+
+  UM8886A  1060:886A  class 06/01  revision 01
+  baseline register A4h = 01h
+
+  UM8881F  1060:8881  class 06/00  revision 01
+  guard registers 52h=B4h and 53h=87h
+
+TEST00 and TEST10 are refused unless the machine is at the exact known baseline
+A4h=01h and the UM8881F guard registers are also at their known baseline.
+
+Every write changes only UM8886A A4h bits 1:0, then reads the register back and
+verifies that no other byte in the UM8886A A0h-AFh window changed.
+
+RESTORE is accepted only from one of the three explicit states known to UMCA4:
+
+  A4h=00h  TEST00
+  A4h=01h  known BIOS baseline
+  A4h=02h  TEST10
+
+It restores A4h=01h.
+
+Build
+-----
+Open Watcom C/C++ 1.9, real-mode DOS target:
+
+  wcl -bt=dos -ms UMCA4.C
+
+Commands
+--------
+Read-only inspection:
+
+  UMCA4 SHOW
+
+Apply the already validated state, bits 1:0 = 00b:
+
+  UMCA4 TEST00 APPLY
+
+Apply the controlled intermediate experiment, bits 1:0 = 10b:
+
+  UMCA4 TEST10 APPLY
+
+Restore the known BIOS baseline, bits 1:0 = 01b:
+
+  UMCA4 RESTORE APPLY
+
+Every write command requires the literal APPLY token.
+
+Recommended TEST10 procedure
+----------------------------
+1. Boot/run real-mode DOS with TURBO ON.
+2. Restore/reboot first, then verify:
+
+     UMCA4 SHOW
+
+   Expected baseline:
+     UM8886A A4=01
+     UM8881F 52=B4 53=87
+
+3. Apply the new test state:
+
+     UMCA4 TEST10 APPLY
+
+   Expected target:
+     UM8886A A4=02
+
+   If the machine hangs or behaves abnormally, reboot/power-cycle and do not
+   continue testing that encoding.
+
+4. If DOS remains stable, run:
+
+     TURBOPROBE A4_10 > A4_10_PROBE.TXT
+     VGAPAL4 A4_10
+     REN VGAPAL4.TXT VGPA4_10.TXT
+
+5. Test real applications as appropriate, especially VGA palette-heavy games
+   and PCI Ethernet traffic.
+
+6. Restore before any other chipset experiment:
+
+     UMCA4 RESTORE APPLY
+     UMCA4 SHOW
+
+   Confirm A4=01 again.
+
+Interpretation
+--------------
+Working hypothesis only:
+
+  00b -> 2:1   slower/more conservative PCI timing
+  01b -> 1:1   BIOS baseline on this machine; empirically unstable
+  10b -> 3:2   possible intermediate timing/performance point
+  11b -> reserved/unknown; intentionally unsupported
+
+The TEST10 experiment is intended to determine whether 10b offers the same
+stability as the known-good 00b state with less PCI/I/O slowdown.  If TEST10
+shows any palette corruption, packet loss, instability, or only negligible
+performance benefit, TEST00 remains the preferred state.
+
+Notes
+-----
+- Run only in real-mode DOS, never from Windows or a DOS box.
+- A reboot/power-cycle should let the BIOS reinitialize the chipset if an
+  experimental state causes trouble.
+- Do not switch directly between TEST00 and TEST10.  UMCA4 intentionally
+  requires RESTORE (or reboot) back to A4=01h before each test state.
+- Encoding 11b is not implemented and should not be brute-forced.

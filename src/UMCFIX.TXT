@@ -1,0 +1,96 @@
+UMCFIX 1.0
+==========
+
+Purpose
+-------
+UMCFIX applies the known-good PCI timing fix discovered on the target
+PCChips M915i / UMC UM8881F + UM8886A system:
+
+    UM8886A PCI configuration register A4h: 01h -> 00h
+
+On the tested machine this change eliminated:
+
+  * S3 PCI VGA DAC/palette corruption in DOS games and Windows 95.
+  * PCI Ethernet instability / packet loss with a Realtek RTL8029.
+
+CPU and RAM benchmark throughput remained essentially unchanged.  The
+PCI/I/O path becomes slower, which is the intended effect.  Doom timedemo
+showed a modest real-world cost on this machine (1891 -> 2009 realtics,
+about 5.9% lower throughput), in exchange for correct/stable PCI operation.
+
+UMCFIX is intentionally machine-specific and conservative.  It is NOT a
+general UM8886 tuning utility.
+
+Build
+-----
+Open Watcom C/C++ 1.9, 16-bit real-mode DOS, small model:
+
+    wcl -bt=dos -ms UMCFIX.C
+
+Usage
+-----
+
+    UMCFIX
+        Apply the fix with normal status output.
+
+    UMCFIX /Q
+        Apply the fix quietly on success.  Errors are still printed.
+        This is the recommended AUTOEXEC.BAT mode.
+
+    UMCFIX /CHECK
+        Read-only check.  Does not write PCI configuration.
+        ERRORLEVEL 0 = fix already active (A4h=00h)
+        ERRORLEVEL 1 = known BIOS baseline (A4h=01h), fix is needed/applicable
+        ERRORLEVEL 2+ = error or refusal
+
+Recommended AUTOEXEC.BAT line
+-----------------------------
+
+    C:\UTIL\UMCFIX.EXE /Q
+
+Safety behaviour
+----------------
+UMCFIX writes only when all of the following are true:
+
+  * PCI BIOS services are present.
+  * Exactly one UMC 1060:886A UM8886A function-0 device is found.
+  * Exactly one UMC 1060:8881 UM8881F function-0 device is found.
+  * Device class/subclass/revision/header match the tested machine.
+  * UM8881F guard registers are at the known baseline 52h=B4h, 53h=87h.
+  * UM8886A A4h is exactly 01h.
+
+If A4h is already 00h, no write is performed and the program exits
+successfully after checking the guard state.
+
+If A4h is any other value (including the experimentally rejected 02h /
+TEST10 state), UMCFIX refuses to write.
+
+After writing A4h=00h, UMCFIX reads it back three times and verifies the
+whole UM8886A A0h-AFh window to ensure that no byte other than A4h changed.
+If verification fails it attempts to restore A4h=01h and reports an error.
+
+UMCFIX deliberately provides no RESTORE, TEST10 or TEST11 command.  Keep
+UMCA4.EXE as the diagnostic/experimental tool; UMCFIX.EXE has one job only:
+apply the proven A4h=00h startup fix.
+
+Exit codes
+----------
+Apply mode:
+   0  success (already fixed, or fix written and verified)
+   2  invalid command-line option
+   3  PCI BIOS unavailable
+   4  required UMC device discovery failed/ambiguous
+   5  chipset identity/revision/header mismatch
+   6  UM8881F guard state differs from tested baseline
+   7  unexpected UM8886A A4h state
+   8  PCI configuration write failed
+   9  post-write verification failed
+
+/CHECK mode additionally uses:
+   1  A4h=01h known baseline; fix is applicable but /CHECK performed no write
+
+Operational note
+----------------
+Use UMCFIX from real-mode DOS during startup, before starting Windows 95.
+The setting is a live chipset configuration change and is expected to be
+reinitialized by the BIOS after reboot/power-cycle.

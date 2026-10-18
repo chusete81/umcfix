@@ -1,0 +1,79 @@
+UMCPCI - instrucciones de uso
+============================
+
+Objetivo
+--------
+Volcar, en modo SOLO LECTURA, el espacio de configuracion PCI de los
+componentes UMC del chipset para comparar TURBO OFF y TURBO ON.
+
+Compilacion (Open Watcom 1.9)
+------------------------------
+  wcl -bt=dos -ms UMCPCI.C
+
+Se genera UMCPCI.EXE.
+
+Entorno recomendado
+-------------------
+- MS-DOS en modo real.
+- No ejecutar dentro de una ventana DOS de Windows 95.
+- Usar exactamente la misma configuracion CONFIG.SYS/AUTOEXEC.BAT en todas
+  las ejecuciones.
+
+Prueba principal: misma sesion DOS
+----------------------------------
+Esta prueba intenta aislar el efecto directo del conmutador TURBO, evitando
+que una segunda inicializacion de BIOS introduzca diferencias.
+
+1. Arrancar DOS con TURBO ON.
+2. Ejecutar:
+     UMCPCI ON_A > ON_A.TXT
+3. Cambiar TURBO a OFF sin reiniciar, si la placa permite hacerlo normalmente.
+4. Ejecutar:
+     UMCPCI OFF > OFF.TXT
+5. Volver TURBO a ON.
+6. Ejecutar:
+     UMCPCI ON_B > ON_B.TXT
+
+ON_A.TXT y ON_B.TXT deberian ser iguales o practicamente iguales. Si lo son,
+la comparacion relevante es ON_A/OFF.
+
+Prueba secundaria: inicializacion BIOS
+--------------------------------------
+Si se quiere comprobar si el BIOS programa el chipset de forma distinta
+segun el estado de TURBO durante el arranque:
+
+- Arrancar/reiniciar con TURBO OFF:
+     UMCPCI BOOT_OFF > BOOT_OFF.TXT
+- Arrancar/reiniciar con TURBO ON:
+     UMCPCI BOOT_ON > BOOT_ON.TXT
+
+Que vuelca el programa
+----------------------
+- Version del PCI BIOS y ultimo bus PCI comunicado por BIOS.
+- Resumen de todas las funciones PCI encontradas.
+- Deteccion de dispositivos UMC (vendor ID 1060h).
+- Dos lecturas consecutivas de los 256 bytes de configuracion de cada UMC.
+- Numero de bytes que cambian entre esas dos lecturas.
+- Volcado hexadecimal completo de 00h-FFh.
+- Ventana 40h-7Fh repetida de forma compacta, por ser la zona de registros
+  especificos de chipset que mas nos interesa estudiar.
+- Fingerprint FNV-1a de cada volcado para detectar rapidamente diferencias.
+
+Seguridad
+---------
+Esta version NO contiene llamadas PCI BIOS de escritura (B10Bh/B10Ch/B10Dh).
+Solo usa las funciones de lectura B108h/B109h. Tampoco escribe puertos VGA.
+
+Si aparece:
+  ERROR: PCI BIOS services ... were not detected
+no se modifica ningun registro; simplemente esta version no podra obtener el
+volcado por INT 1Ah. En ese caso se puede preparar una variante que acceda al
+mecanismo PCI Configuration Mechanism #1 (CF8h/CFCh) directamente.
+
+Resultados
+----------
+Conservar y pasar los TXT completos. Interesa especialmente comprobar:
+- si algun byte UMC cambia entre TURBO ON y OFF;
+- si cambian 50h-5Fh o, en particular, 52h;
+- si las dos lecturas consecutivas de un mismo estado difieren;
+- si ON_A y ON_B son reproducibles.
