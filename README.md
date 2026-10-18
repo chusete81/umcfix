@@ -4,6 +4,8 @@
 
 This investigation began with an apparently graphical fault: several DOS games displayed incorrect colors when dynamically updating the VGA palette. The problem occurred with both an **S3 Trio64V2/DX PCI** and an **S3 ViRGE PCI**, on a **PCChips M915i** motherboard with the **UMC UM8881F + UM8886A** chipset, using an **Intel 486 DX4-100**.
 
+![Example of the palette corruption in Doom](pics/Dooma.jpg)
+
 Initial tests showed that the problem was not simply analog color corruption or an isolated fault in a VGA card. The error pattern revealed that some I/O accesses to the VGA DAC ports were being lost, repeated, or handled incorrectly, desynchronizing the DAC's internal state and causing long sequences of shifted colors.
 
 The investigation progressed from the graphical symptom to the motherboard's I/O subsystem. The key finding was that disabling TURBO dramatically improved the problem, but at a severe overall performance cost. It was later established that TURBO OFF barely reduced the CPU's internal arithmetic performance, but greatly slowed external accesses, especially I/O and RAM writes. This pointed to bus timing, wait states, or handshaking—not the processor's internal clock.
@@ -63,6 +65,11 @@ Affected games:
 - Prince of Persia (1 and 2)
 - The Lion King
 - Mortal Kombat II
+
+![Doom](pics/Doomb.jpg)
+![Super Street Fighter 2 Turbo](pics/SSF2T.jpg)
+![Prince of Persia 2](pics/POP2.jpg)
+![Mortal Kombat 2](pics/MK2b.jpg)
 
 Symptoms were also observed during:
 
@@ -607,6 +614,8 @@ UMCFIX /CHECK
 ```
 
 The idea is for the system to boot with its original BIOS and for UMCFIX to apply the stable timing immediately, before starting games, drivers, networking, or Windows 95.
+
+[Watch it in YouTube](https://youtu.be/edJtkEQw9OY)
 
 ---
 
